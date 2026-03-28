@@ -1,50 +1,53 @@
-name: Super Realistic 90 Days Activity
+name: 90 Days Activity Generator
 
 on:
   workflow_dispatch:
+
+permissions:
+  contents: write   # 🔥 MUHIM (push uchun)
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   backdate:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Create 90 Days Activity
+      - name: Generate commits
         run: |
-          # Sizning emailingiz va ismingiz sozlandi
-          git config --local user.email "zarnigorkamilova85@gmail.com"
-          git config --local user.name "zarnigor"
-          
+          git config user.name "zarnigor"
+          git config user.email "zarnigorkamilova85@gmail.com"
+
           for i in {90..1}
           do
-            # Hafta kunini aniqlaymiz (1-5 ish kunlari, 6-7 dam olish)
-            DAY_OF_WEEK=$(date -d "$i days ago" +%u)
-            CHANCE=$((RANDOM % 100))
-            
-            # Haqiqiy hayot mantiqi:
-            # Ish kunlari: 65% ehtimol bilan yashil bo'ladi
-            # Dam olish kunlari: 15% ehtimol bilan (juda kam)
-            THRESHOLD=35
-            if [ $DAY_OF_WEEK -ge 6 ]; then THRESHOLD=85; fi
+            DAY=$(date -d "$i days ago" +%u)
+            RAND=$((RANDOM % 100))
 
-            if [ $CHANCE -gt $THRESHOLD ]; then
-                # Ranglar har xil bo'lishi uchun 1 dan 15 gacha random commit
-                RANDOM_COUNT=$((1 + RANDOM % 15))
-                
-                for j in $(seq 1 $RANDOM_COUNT)
-                do
-                  D=$(date -d "$i days ago" +%Y-%m-%dT%H:%M:%S)
-                  # Har safar yangi matn yozamiz
-                  echo "Update for $D - Rand: $RANDOM" > activity.txt
-                  git add activity.txt
-                  GIT_AUTHOR_DATE="$D" GIT_COMMITTER_DATE="$D" git commit -m "Fixing module $j on $D"
-                done
+            # Ish kunlari ko‘proq commit
+            if [ $DAY -lt 6 ]; then LIMIT=40; else LIMIT=85; fi
+
+            if [ $RAND -gt $LIMIT ]; then
+              COUNT=$((1 + RANDOM % 8))
+
+              for j in $(seq 1 $COUNT)
+              do
+                DATE=$(date -d "$i days ago" +"%Y-%m-%dT%H:%M:%S")
+
+                echo "activity $RANDOM" > file.txt
+                git add file.txt
+
+                GIT_AUTHOR_DATE="$DATE" \
+                GIT_COMMITTER_DATE="$DATE" \
+                git commit -m "activity update"
+              done
             fi
           done
-          
-          # Hamma o'tmishdagi commitlarni bittada yuboramiz
-          git push origin main --force
+
+      - name: Push
+        run: git push origin HEAD:main
