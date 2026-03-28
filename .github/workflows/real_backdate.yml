@@ -1,50 +1,45 @@
-name: Super Realistic 90 Days Activity
+name: CI
 
 on:
-  workflow_dispatch:
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  push:
+    branches: [ "main" ]
+  pull_request:
+
 jobs:
-  backdate:
+  build:
     runs-on: ubuntu-latest
+
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
-      - name: Checkout code
+      # 📥 Repo ni olish
+      - name: Checkout repository
         uses: actions/checkout@v4
+
+      # 🟢 Node.js o‘rnatish
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
+          node-version: 20   # yoki 18 / 22 (loyihangizga qarab)
 
-      - name: Create 90 Days Activity
-        run: |
-          # Sizning emailingiz va ismingiz sozlandi
-          git config --local user.email "zarnigorkamilova85@gmail.com"
-          git config --local user.name "zarnigor"
-          
-          for i in {90..1}
-          do
-            # Hafta kunini aniqlaymiz (1-5 ish kunlari, 6-7 dam olish)
-            DAY_OF_WEEK=$(date -d "$i days ago" +%u)
-            CHANCE=$((RANDOM % 100))
-            
-            # Haqiqiy hayot mantiqi:
-            # Ish kunlari: 65% ehtimol bilan yashil bo'ladi
-            # Dam olish kunlari: 15% ehtimol bilan (juda kam)
-            THRESHOLD=35
-            if [ $DAY_OF_WEEK -ge 6 ]; then THRESHOLD=85; fi
+      # 📦 Cache (tezroq install uchun)
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            npm-${{ runner.os }}-
 
-            if [ $CHANCE -gt $THRESHOLD ]; then
-                # Ranglar har xil bo'lishi uchun 1 dan 15 gacha random commit
-                RANDOM_COUNT=$((1 + RANDOM % 15))
-                
-                for j in $(seq 1 $RANDOM_COUNT)
-                do
-                  D=$(date -d "$i days ago" +%Y-%m-%dT%H:%M:%S)
-                  # Har safar yangi matn yozamiz
-                  echo "Update for $D - Rand: $RANDOM" > activity.txt
-                  git add activity.txt
-                  GIT_AUTHOR_DATE="$D" GIT_COMMITTER_DATE="$D" git commit -m "Fixing module $j on $D"
-                done
-            fi
-          done
-          
-          # Hamma o'tmishdagi commitlarni bittada yuboramiz
-          git push origin main --force
+      # 📥 Paketlarni o‘rnatish
+      - name: Install dependencies
+        run: npm ci
+
+      # 🧪 Test (agar mavjud bo‘lsa)
+      - name: Run tests
+        run: npm test
+
+      # 🏗 Build (agar mavjud bo‘lsa)
+      - name: Build project
+        run: npm run build
